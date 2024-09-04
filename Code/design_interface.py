@@ -1,55 +1,63 @@
-# 匯入gradio套件
-# !pip install gradio
 import gradio as gr
 import numpy as np
-
-# 匯入jieba套件
-# ! pip install -U jieba
 import jieba
 import jieba.analyse
 
-# 將建立好的遊戲資料庫匯入
-Escape_Game_Data = np.load("Escape_Game_Data.npy", allow_pickle='TRUE').item()
-print(Escape_Game_Data)
+class EscapeGameRecommender:
+    def __init__(self, data_path="Escape_Game_Data.npy"):
+        # 將建立好的遊戲資料庫匯入
+        self.escape_game_data = np.load(data_path, allow_pickle='TRUE').item()
 
+    def extract_keywords(self, input_text, topK=3):
+        """用 jieba 整理輸入文字中的關鍵字。"""
+        tags = jieba.analyse.extract_tags(str(input_text), topK=topK)
+        return tags
 
-# 建立Gradio system
-# 將輸入文字找尋關鍵字，並依照關鍵字去查找符合的遊戲
-def Escape_recommend(input):
-  # 用jieba整理輸入的關鍵字
-  topK = 3
-  tags = jieba.analyse.extract_tags(str(input), topK=topK)
-  # 建立一個空串列用來放查找到擁有對應關鍵字的遊戲名稱
-  game = []
-  for item in tags:
-    for game1,information in Escape_Game_Data.items():
-      if item in information.get('keyword',[]): # 判斷關鍵是是否有在keyword的value裡
-        game.append(game1)
-  # 建立一個空串列，用來放推薦的遊戲資訊
-  g=[]
-  for word in game:
-    p = []
-    # 整理遊戲輸出的資訊
-    for key, value in Escape_Game_Data[word].items():
-      if key == 'topic':
-        p.append(f'主題：{value}')
-      elif key == 'information':
-        p.append(f'價錢：{value}')
-      elif key == 'content':
-        p.append(f'遊戲說明：{value}')
-      elif key == 'type':
-        p.append("遊戲類型：" + " ".join("#" + x.rstrip(',') for x in value))
-      elif key == 'url':
-        p.append(f'網站連結：{value}')
-    g.append(p)
-  # 建立一個空字串，用來放要輸出的所有遊戲資訊
-  result = ""
-  for sublist in g:
-    for item in sublist:
-      result += item.rstrip(',') + "\n" # 各遊戲中的資訊用換行隔開
-    result += "---------------------------------------------\n"  # 遊戲與遊戲之間隔開
-  return result # 輸出字串
+    def find_games(self, tags):
+        """根據關鍵字查找符合的遊戲。"""
+        game_matches = []
+        for tag in tags:
+            for game_name, info in self.escape_game_data.items():
+                if tag in info.get('keyword', []):
+                    game_matches.append(game_name)
+        return game_matches
 
-# 建造此系統之網頁
-demo = gr.Interface(fn=Escape_recommend, inputs="text", outputs="text")
-demo.launch()
+    def format_game_info(self, game_names):
+        """格式化遊戲資訊以便顯示。"""
+        formatted_games = []
+        for name in game_names:
+            game_info = []
+            for key, value in self.escape_game_data[name].items():
+                if key == 'topic':
+                    game_info.append(f'主題：{value}')
+                elif key == 'money':
+                    game_info.append(f'價錢：{value}')
+                elif key == 'content':
+                    game_info.append(f'遊戲說明：{value}')
+                elif key == 'keyword':
+                    game_info.append("遊戲類型：" + " ".join("#" + x.rstrip(',') for x in value))
+                elif key == 'url':
+                    game_info.append(f'網站連結：{value}')
+            formatted_games.append("\n".join(game_info))
+        return "\n---------------------------------------------\n".join(formatted_games)
+
+    def recommend_games(self, input_text):
+        """主函數：根據輸入文字推薦遊戲。"""
+        tags = self.extract_keywords(input_text)
+        matched_games = self.find_games(tags)
+        if not matched_games:
+            return "沒有找到符合的遊戲。"
+        return self.format_game_info(matched_games)
+
+def launch_gradio_interface():
+    recommender = EscapeGameRecommender()
+
+    def escape_recommend(input_text):
+        return recommender.recommend_games(input_text)
+
+    # 建造此系統之網頁
+    demo = gr.Interface(fn=escape_recommend, inputs="text", outputs="text")
+    demo.launch()
+
+if __name__ == "__main__":
+    launch_gradio_interface()

@@ -44,29 +44,21 @@ class EscapeGameScraper:
         title = soup.find("h1", class_="text-2xl lg:text-3xl font-black").getText()
         money = soup.find('p', class_='mb-2 pl-4 leading-normal text-sm lg:text-base whitespace-pre-wrap').getText()
         content = soup.find('article', class_='ContentBlock_contentStyle__jR1s5').getText()
-        Type = [t.getText() for t in soup.find_all('b', class_='chakra-text css-0', limit=3)]
-        
-        return {
-            'topic': title,
-            'information': money,
+        topic = soup.find('div', class_='mt-3').getText().strip()
+        game_info = {
+            'title': title,
+            'money': money,
             'content': content,
-            'type': Type,
+            'topic': topic,
             'url': url
         }
+        return game_info
 
-# Example usage
-workshop_ids = [
-    '2612', '2656', '2627', '8119', '2659', '2626', '2629', '12541', 
-    '2637', '10586', '2635', '2617', '2624', '2630', '4082', '2667', 
-    '2652', '18812', '2640', '11445', '10282', '2633', '4906', '15315', 
-    '11224', '4936', '20075', '2662', '2632', '20496'
-]
+def main():
+    # Example usage of the EscapeGameScraper class
+    scraper = EscapeGameScraper(workshop_ids=[1, 2, 3])  # 輸入工作室 ID 列表
+    scraper.fetch_game_urls()
+    scraper.fetch_game_information()
 
-scraper = EscapeGameScraper(workshop_ids)
-scraper.fetch_game_urls()
-escape_game_data = scraper.fetch_game_information()
-
-# Load saved game data
-Escape_games = np.load("escape_game.npy", allow_pickle=True)
-print(Escape_games)
-print(type(Escape_games))
+if __name__ == "__main__":
+    main()
